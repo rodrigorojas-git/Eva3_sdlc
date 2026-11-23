@@ -92,9 +92,11 @@ jobs:
     # Solo se ejecuta si TODOS los controles anteriores pasaron
     needs: [pruebas, sonarcloud, snyk, codeql]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
-
       - name: Login en Docker Hub
         uses: docker/login-action@v4
         with:
