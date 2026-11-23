@@ -1,6 +1,7 @@
 # Imagen base liviana de Node 22
 FROM node:22-alpine
 
+RUN apk upgrade --no-cache
 WORKDIR /app
 
 # Primero copiamos solo package.json para aprovechar la caché de Docker
@@ -15,3 +16,4 @@ USER node
 
 EXPOSE 3000
 CMD ["node", "src/server.js"]
+
