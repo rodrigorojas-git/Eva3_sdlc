@@ -1,0 +1,11 @@
+# Dependabot revisa cada semana si hay dependencias con vulnerabilidades
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly

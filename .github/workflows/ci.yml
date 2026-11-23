@@ -1,0 +1,120 @@
+name: CI EduTech Labs
+
+# El pipeline se ejecuta con push a develop y con Pull Requests hacia main
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # 1. Compilar y ejecutar pruebas unitarias
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Validar que compila
+        run: npm run build
+
+      # Si la cobertura es menor a 80% Jest falla y el pipeline se detiene
+      - name: Pruebas unitarias con cobertura
+        run: npm test
+
+      - name: Guardar reporte de cobertura
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage/
+
+  # 2. Análisis de calidad con SonarCloud
+  sonarcloud:
+    needs: pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Descargar cobertura
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage
+          path: coverage
+
+      # qualitygate.wait=true hace que el job falle si no pasa el Quality Gate
+      - name: Análisis SonarCloud
+        uses: SonarSource/sonarqube-scan-action@v8
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: -Dsonar.qualitygate.wait=true
+
+  # 3. Vulnerabilidades en dependencias con Snyk
+  snyk:
+    needs: pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Falla si encuentra vulnerabilidades críticas
+      - name: Análisis Snyk
+        uses: snyk/actions/node@v1
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=critical
+
+  # 4. Revisión de seguridad del código con CodeQL (GitHub Advanced Security)
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript
+
+      - uses: github/codeql-action/analyze@v4
+
+  # 5. Construir la imagen, analizarla con Docker Scout y publicarla
+  docker:
+    # Solo se ejecuta si TODOS los controles anteriores pasaron
+    needs: [pruebas, sonarcloud, snyk, codeql]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Login en Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Construir imagen
+        run: docker build -t ${{ vars.DOCKERHUB_USERNAME }}/edutech-labs:latest .
+
+      # Falla si la imagen tiene vulnerabilidades críticas que ya tienen solución
+      - name: Análisis Docker Scout
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: local://${{ vars.DOCKERHUB_USERNAME }}/edutech-labs:latest
+          only-severities: critical
+          only-fixed: true
+          exit-code: true
+
+      # Solo publicamos con push a develop, en los Pull Requests solo se valida
+      - name: Publicar en Docker Hub
+        if: github.event_name == 'push'
+        run: docker push ${{ vars.DOCKERHUB_USERNAME }}/edutech-labs:latest
