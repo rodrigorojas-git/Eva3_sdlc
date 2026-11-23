@@ -84,3 +84,27 @@ app.get('/mensajes', (req, res) => {
 });
 
 module.exports = { app, calcularPromedio, porcentajeAsistencia };
+
+// ---- Funciones nuevas SIN pruebas (para la demo) ----
+function notaMaxima(lista) {
+  if (lista.length === 0) return null;
+  return Math.max(...lista);
+}
+
+function notaMinima(lista) {
+  if (lista.length === 0) return null;
+  return Math.min(...lista);
+}
+
+function contarReprobados(lista) {
+  return lista.filter((n) => n < 4).length;
+}
+
+function enRiesgo(porcentaje) {
+  return porcentaje < 75 ? 'en riesgo' : 'ok';
+}
+
+module.exports.notaMaxima = notaMaxima;
+module.exports.notaMinima = notaMinima;
+module.exports.contarReprobados = contarReprobados;
+module.exports.enRiesgo = enRiesgo;
