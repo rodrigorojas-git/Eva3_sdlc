@@ -70,7 +70,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=critical
+          args: --severity-threshold=high
 
   # 4. Revisión de seguridad del código con CodeQL (GitHub Advanced Security)
   codeql:
