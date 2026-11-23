@@ -1,5 +1,5 @@
 # Imagen base liviana de Node 22
-FROM node:22-alpine
+FROM node:26-alpine
 
 RUN apk upgrade --no-cache
 WORKDIR /app
